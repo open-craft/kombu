@@ -913,6 +913,17 @@ class test_Channel:
                 ('celery', '', 'celery'),
             ]
 
+    def test_global_key_prefix(self):
+        with Connection(transport=Transport, transport_options={
+            'global_key_prefix': 'foo',
+        }) as conn:
+            channel = conn.channel()
+            c = channel._create_client = Mock()
+
+            body = {'hello': 'world'}
+            channel._put_fanout('exchange', body, '')
+            c().publish.assert_called_with('foo/{db}.exchange', dumps(body))
+
 
 class test_Redis:
 
