@@ -828,9 +828,8 @@ class Channel(virtual.Channel):
 
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
-        if pri:
-            return f"{self.global_key_prefix}{queue}{self.sep}{pri}"
-        return queue
+        key = f"{queue}{self.sep}{pri}" if pri else queue
+        return self.global_key_prefix + key
 
     def priority(self, n):
         steps = self.priority_steps
