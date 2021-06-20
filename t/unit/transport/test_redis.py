@@ -925,14 +925,14 @@ class test_Channel:
             c().publish.assert_called_with('foo/{db}.exchange', dumps(body))
 
     def test_global_key_prefix_put(self):
-        conn = Connection(transport=Transport, transport_options={
+        with Connection(transport=Transport, transport_options={
             'global_key_prefix': 'foo',
-        })
-        chan = conn.channel()
-        c = chan._create_client = Mock()
-        message = {'hello': 'world'}
-        chan._put('queue', message)
-        c().lpush.assert_called_with('fooqueue', dumps(message))
+        }) as conn:
+            channel = conn.channel()
+            c = channel._create_client = Mock()
+            message = {'hello': 'world'}
+            channel._put('queue', message)
+            c().lpush.assert_called_with('fooqueue', dumps(message))
 
 
 class test_Redis:

@@ -38,6 +38,7 @@ Transport Options
 * ``unacked_restore_limit``
 * ``fanout_prefix``
 * ``fanout_patterns``
+* ``global_key_prefix``
 * ``socket_timeout``
 * ``socket_connect_timeout``
 * ``socket_keepalive``
@@ -568,9 +569,22 @@ class Channel(virtual.Channel):
             # by default.
             self.keyprefix_fanout = ''
 
-        # Prepend the global key prefix to the two key prefixes in use
-        self.keyprefix_fanout = self.global_key_prefix + self.keyprefix_fanout
-        self.keyprefix_queue = self.global_key_prefix + self.keyprefix_queue
+        # Prepend the global key prefix
+        self.unacked_key = self._queue_with_prefix(self.unacked_key)
+        self.unacked_index_key = self._queue_with_prefix(
+            self.unacked_index_key
+        )
+        self.unacked_mutex_key = self._queue_with_prefix(
+            self.unacked_mutex_key
+        )
+
+        # The default `keyprefix_queue` starts with an underscore, therefore
+        # adding a prefix ending an undescore will result in double
+        # underscores. Since both `keyprefix_queue` and `global_key_prefix`
+        # can be set by the user, this behavior is better than manipulating
+        # `keyprefix_queue` here.
+        self.keyprefix_queue = self._queue_with_prefix(self.keyprefix_queue)
+        self.keyprefix_fanout = self._queue_with_prefix(self.keyprefix_fanout)
 
         # Evaluate connection.
         try:
@@ -586,6 +600,12 @@ class Channel(virtual.Channel):
 
         if register_after_fork is not None:
             register_after_fork(self, _after_fork_cleanup_channel)
+
+    def _queue_with_prefix(self, queue):
+        """
+        Return the queue name prefixed with `global_key_prefix` if set.
+        """
+        return self.global_key_prefix + queue
 
     def _after_fork(self):
         self._disconnect_pools()
@@ -642,6 +662,7 @@ class Channel(virtual.Channel):
         return self._restore(message, leftmost=True)
 
     def basic_consume(self, queue, *args, **kwargs):
+        queue = self._queue_with_prefix(queue)
         if queue in self._fanout_queues:
             exchange, _ = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
@@ -704,7 +725,7 @@ class Channel(virtual.Channel):
         return self._get_publish_topic(exchange, routing_key)
 
     def _subscribe(self):
-        keys = [self._get_subscribe_topic(queue)
+        keys = [self._get_subscribe_topic(self._queue_with_prefix(queue))
                 for queue in self.active_fanout_queues]
         if not keys:
             return
@@ -715,6 +736,7 @@ class Channel(virtual.Channel):
         c.psubscribe(keys)
 
     def _unsubscribe_from(self, queue):
+        queue = self._queue_with_prefix(queue)
         topic = self._get_subscribe_topic(queue)
         c = self.subclient
         if c.connection and c.connection._sock:
@@ -818,6 +840,7 @@ class Channel(virtual.Channel):
             raise Empty()
 
     def _size(self, queue):
+        queue = self._queue_with_prefix(queue)
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
@@ -828,8 +851,9 @@ class Channel(virtual.Channel):
 
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
-        key = f"{queue}{self.sep}{pri}" if pri else queue
-        return self.global_key_prefix + key
+        if pri:
+            return f"{queue}{self.sep}{pri}"
+        return queue
 
     def priority(self, n):
         steps = self.priority_steps
@@ -837,6 +861,7 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
+        queue = self._queue_with_prefix(queue)
         pri = self._get_message_priority(message, reverse=False)
 
         with self.conn_or_acquire() as client:
@@ -867,6 +892,7 @@ class Channel(virtual.Channel):
                                        queue or '']))
 
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
+        queue = self._queue_with_prefix(queue)
         self.auto_delete_queues.discard(queue)
         with self.conn_or_acquire(client=kwargs.get('client')) as client:
             client.srem(self.keyprefix_queue % (exchange,),
@@ -879,6 +905,7 @@ class Channel(virtual.Channel):
                 pipe.execute()
 
     def _has_queue(self, queue, **kwargs):
+        queue = self._queue_with_prefix(queue)
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
@@ -894,6 +921,7 @@ class Channel(virtual.Channel):
             return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
 
     def _purge(self, queue):
+        queue = self._queue_with_prefix(queue)
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
