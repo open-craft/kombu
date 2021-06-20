@@ -913,9 +913,9 @@ class test_Channel:
                 ('celery', '', 'celery'),
             ]
 
-    def test_global_key_prefix(self):
+    def test_global_keyprefix(self):
         with Connection(transport=Transport, transport_options={
-            'global_key_prefix': 'foo',
+            'global_keyprefix': 'foo',
         }) as conn:
             channel = conn.channel()
             c = channel._create_client = Mock()
@@ -924,9 +924,9 @@ class test_Channel:
             channel._put_fanout('exchange', body, '')
             c().publish.assert_called_with('foo/{db}.exchange', dumps(body))
 
-    def test_global_key_prefix_put(self):
+    def test_global_keyprefix_put(self):
         with Connection(transport=Transport, transport_options={
-            'global_key_prefix': 'foo',
+            'global_keyprefix': 'foo',
         }) as conn:
             channel = conn.channel()
             c = channel._create_client = Mock()

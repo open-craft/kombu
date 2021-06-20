@@ -38,7 +38,7 @@ Transport Options
 * ``unacked_restore_limit``
 * ``fanout_prefix``
 * ``fanout_patterns``
-* ``global_key_prefix``
+* ``global_keyprefix``
 * ``socket_timeout``
 * ``socket_connect_timeout``
 * ``socket_keepalive``
@@ -489,7 +489,7 @@ class Channel(virtual.Channel):
     #: The global key prefix will be prepended to all keys used
     #: by Kombu, which can be useful when a redis database is shared
     #: by different users. By default, no prefix is prepended.
-    global_key_prefix = ''
+    global_keyprefix = ''
 
     #: Order in which we consume from queues.
     #:
@@ -532,7 +532,7 @@ class Channel(virtual.Channel):
          'unacked_restore_limit',
          'fanout_prefix',
          'fanout_patterns',
-         'global_key_prefix',
+         'global_keyprefix',
          'socket_timeout',
          'socket_connect_timeout',
          'socket_keepalive',
@@ -580,7 +580,7 @@ class Channel(virtual.Channel):
 
         # The default `keyprefix_queue` starts with an underscore, therefore
         # adding a prefix ending an undescore will result in double
-        # underscores. Since both `keyprefix_queue` and `global_key_prefix`
+        # underscores. Since both `keyprefix_queue` and `global_keyprefix`
         # can be set by the user, this behavior is better than manipulating
         # `keyprefix_queue` here.
         self.keyprefix_queue = self._queue_with_prefix(self.keyprefix_queue)
@@ -603,9 +603,9 @@ class Channel(virtual.Channel):
 
     def _queue_with_prefix(self, queue):
         """
-        Return the queue name prefixed with `global_key_prefix` if set.
+        Return the queue name prefixed with `global_keyprefix` if set.
         """
-        return self.global_key_prefix + queue
+        return self.global_keyprefix + queue
 
     def _after_fork(self):
         self._disconnect_pools()
