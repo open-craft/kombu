@@ -602,9 +602,7 @@ class Channel(virtual.Channel):
             register_after_fork(self, _after_fork_cleanup_channel)
 
     def _queue_with_prefix(self, queue):
-        """
-        Return the queue name prefixed with `global_keyprefix` if set.
-        """
+        """Return the queue name prefixed with `global_keyprefix` if set."""
         return self.global_keyprefix + queue
 
     def _after_fork(self):
